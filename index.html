@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT ডিভাইস কন্ট্রোল প্যানেল</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        :root {
+            --primary-color: #4a6fa5;
+            --secondary-color: #166088;
+            --accent-color: #4fc3f7;
+            --background-color: #f5f5f5;
+            --card-color: #ffffff;
+            --text-color: #333333;
+            --text-light: #777777;
+            --success-color: #4caf50;
+            --danger-color: #f44336;
+            --warning-color: #ff9800;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+            --lamp-on: #ffeb3b;
+            --lamp-off: #b0bec5;
+        }
+
+        .dark-mode {
+            --primary-color: #4a6fa5;
+            --secondary-color: #166088;
+            --accent-color: #4fc3f7;
+            --background-color: #121212;
+            --card-color: #1e1e1e;
+            --text-color: #f5f5f5;
+            --text-light: #b0b0b0;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            --lamp-off: #424242;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            transition: var(--transition);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* লগিন সিস্টেম স্টাইল */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: var(--primary-color);
+        }
+
+        .login-box {
+            background-color: var(--card-color);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .login-box h2 {
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+
+        .login-box input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: var(--transition);
+        }
+
+        .login-box input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 5px rgba(79, 195, 247, 0.5);
+        }
+
+        .login-box button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .login-box button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .error-message {
+            color: var(--danger-color);
+            margin-top: 10px;
+            font-size: 14px;
+            display: none;
+        }
+
+        /* মডাল স্টাইল */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: var(--card-color);
+            padding: 25px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: var(--shadow);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+
+        .modal-body input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .btn-secondary {
+            background-color: var(--text-light);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #666;
+        }
+
+        /* হেডার স্টাইল */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: var(--shadow);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .user-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .logout-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* নেভিগেশন স্টাইল */
+        nav {
+            background-color: var(--card-color);
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+        }
+
+        .nav-links li {
+            flex: 1;
+            text-align: center;
+        }
+
+        .nav-links a {
+            display: block;
+            padding: 15px;
+            text-decoration: none;
+            color: var(--text-color);
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        /* ড্যাশবোর্ড স্টাইল */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background-color: var(--card-color);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .card-status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            background-color: rgba(76, 175, 80, 0.2);
+            color: var(--success-color);
+        }
+
+        .status-inactive {
+            background-color: rgba(244, 67, 54, 0.2);
+            color: var(--danger-color);
+        }
+
+        .device-controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        .lamp-icon {
+            font-size: 16px;
+            transition: var(--transition);
+        }
+
+        .lamp-on {
+            color: var(--lamp-on);
+            text-shadow: 0 0 8px rgba(255, 235, 59, 0.7);
+        }
+
+        .lamp-off {
+            color: var(--lamp-off);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: var(--transition);
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: var(--transition);
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--success-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        /* রেস্পন্সিভ ডিজাইন */
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- লগিন সিস্টেম -->
+    <div id="login-page" class="login-container">
+        <div class="login-box">
+            <h2>MURAD IoT কন্ট্রোল প্যানেল</h2>
+            <input type="password" id="password-input" placeholder="পাসওয়ার্ড দিন">
+            <div id="error-message" class="error-message">ভুল পাসওয়ার্ড! দয়া করে আবার চেষ্টা করুন।</div>
+            <button id="login-btn">লগিন করুন</button>
+        </div>
+    </div>
+
+    <!-- রিলে কন্ট্রোল পাসওয়ার্ড মডাল -->
+    <div id="relay-password-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">রিলে কন্ট্রোল</h3>
+                <button class="close-modal" id="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modal-message">রিলে কন্ট্রোল করতে পাসওয়ার্ড দিন</p>
+                <input type="password" id="relay-password-input" placeholder="রিলে পাসওয়ার্ড">
+                <div id="relay-error-message" class="error-message" style="display: none;">ভুল পাসওয়ার্ড!</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-relay">বাতিল</button>
+                <button class="btn btn-primary" id="confirm-relay">নিশ্চিত করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- মূল অ্যাপ্লিকেশন -->
+    <div id="app" style="display: none;">
+        <header>
+            <div class="logo">MURAD IoT</div>
+            <div class="user-controls">
+                <button class="theme-toggle" id="theme-toggle">🌓</button>
+                <button class="logout-btn" id="logout-btn">
+                    <span>লগআউট</span>
+                    <span>🚪</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="container">
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="#" class="nav-link active" data-page="page1">পেইজ ১</a></li>
+                    <li><a href="#" class="nav-link" data-page="page2">পেইজ ২</a></li>
+                </ul>
+            </nav>
+
+            <!-- পেইজ ১ কন্টেন্ট -->
+            <div id="page1-page" class="page-content">
+                <h2>পেইজ ১ - ডিভাইস ১ থেকে ৮</h2>
+                <p>ডিভাইস ১ থেকে ৮ এর কন্ট্রোল প্যানেল</p>
+                
+                <div class="dashboard">
+                    <!-- ডিভাইস ১ -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">ডিভাইস ১</div>
+                            <div class="card-status status-active">এক্টিভ</div>
+                        </div>
+                        <div class="device-controls">
+                            <div class="control-item">
+                                <span class="control-label">
+                                    <i class="fas fa-lightbulb lamp-icon lamp-off" id="device1-relay1-lamp"></i>
+                                    রিলে ১
+                                </span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="device1-relay1" data-device="device1" data-relay="relay1">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-label">
+                                    <i class="fas fa-lightbulb lamp-icon lamp-off" id="device1-relay2-lamp"></i>
+                                    রিলে ২
+                                </span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="device1-relay2" data-device="device1" data-relay="relay2">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-label">
+                                    <i class="fas fa-lightbulb lamp-icon lamp-off" id="device1-relay3-lamp"></i>
+                                    রিলে ৩
+                                </span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="device1-relay3" data-device="device1" data-relay="relay3">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-label">
+                                    <i class="fas fa-lightbulb lamp-icon lamp-off" id="device1-relay4-lamp"></i>
+                                    রিলে ৪
+                                </span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="device1-relay4" data-device="device1" data-relay="relay4">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- অন্যান্য ডিভাইসের কার্ড (device2 থেকে device8) একইভাবে যোগ করুন -->
+                </div>
+            </div>
+
+            <!-- পেইজ ২ কন্টেন্ট -->
+            <div id="page2-page" class="page-content" style="display: none;">
+                <h2>পেইজ ২ - ডিভাইস ৯ থেকে ১৬</h2>
+                <p>ডিভাইস ৯ থেকে ১৬ এর কন্ট্রোল প্যানেল</p>
+                
+                <div class="dashboard">
+                    <!-- ডিভাইস ৯ -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">ডিভাইস ৯</div>
+                            <div class="card-status status-active">এক্টিভ</div>
+                        </div>
+                        <div class="device-controls">
+                            <div class="control-item">
+                                <span class="control-label">
+                                    <i class="fas fa-lightbulb lamp-icon lamp-off" id="device9-relay1-lamp"></i>
+                                    রিলে ১
+                                </span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="device9-relay1" data-device="device9" data-relay="relay1">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-label">
+                                    <i class="fas fa-lightbulb lamp-icon lamp-off" id="device9-relay2-lamp"></i>
+                                    রিলে ২
+                                </span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="device9-relay2" data-device="device9" data-relay="relay2">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-label">
+                                    <i class="fas fa-lightbulb lamp-icon lamp-off" id="device9-relay3-lamp"></i>
+                                    রিলে ৩
+                                </span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="device9-relay3" data-device="device9" data-relay="relay3">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="control-item">
+                                <span class="control-label">
+                                    <i class="fas fa-lightbulb lamp-icon lamp-off" id="device9-relay4-lamp"></i>
+                                    রিলে ৪
+                                </span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="device9-relay4" data-device="device9" data-relay="relay4">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- অন্যান্য ডিভাইসের কার্ড (device10 থেকে device16) একইভাবে যোগ করুন -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase কনফিগারেশন
+const firebaseConfig = {
+  apiKey: "AIzaSyAo-XAwQ_ecH8rF_XW2KVXkkOJrbYmLrEs",
+  authDomain: "myfirstproject-8214d.firebaseapp.com",
+  databaseURL: "https://myfirstproject-8214d-default-rtdb.firebaseio.com",
+  projectId: "myfirstproject-8214d",
+  storageBucket: "myfirstproject-8214d.firebasestorage.app",
+  messagingSenderId: "459806711005",
+  appId: "1:459806711005:web:7fe9b1c589914a04830f34"
+};
+
+        // Firebase ইনিশিয়ালাইজ
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // DOM এলিমেন্টস
+        const loginPage = document.getElementById('login-page');
+        const app = document.getElementById('app');
+        const passwordInput = document.getElementById('password-input');
+        const loginBtn = document.getElementById('login-btn');
+        const errorMessage = document.getElementById('error-message');
+        const logoutBtn = document.getElementById('logout-btn');
+        const themeToggle = document.getElementById('theme-toggle');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const pageContents = document.querySelectorAll('.page-content');
+        const toggleSwitches = document.querySelectorAll('.toggle-switch input');
+        
+        // মডাল সম্পর্কিত এলিমেন্টস
+        const relayPasswordModal = document.getElementById('relay-password-modal');
+        const closeModalBtn = document.getElementById('close-modal');
+        const cancelRelayBtn = document.getElementById('cancel-relay');
+        const confirmRelayBtn = document.getElementById('confirm-relay');
+        const relayPasswordInput = document.getElementById('relay-password-input');
+        const relayErrorMessage = document.getElementById('relay-error-message');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+
+        // সঠিক পাসওয়ার্ড
+        const correctPassword = "3467";
+        const relayControlPassword = "123"; // রিলে কন্ট্রোল পাসওয়ার্ড
+
+        // বর্তমানে সিলেক্ট করা রিলের তথ্য
+        let currentRelay = {
+            device: null,
+            relay: null,
+            newStatus: null,
+            toggleElement: null
+        };
+
+        // লগিন ফাংশন
+        loginBtn.addEventListener('click', () => {
+            const enteredPassword = passwordInput.value;
+            
+            if (enteredPassword === correctPassword) {
+                loginPage.style.display = 'none';
+                app.style.display = 'block';
+                localStorage.setItem('isLoggedIn', 'true');
+                errorMessage.style.display = 'none';
+                initializeApp();
+            } else {
+                errorMessage.style.display = 'block';
+                passwordInput.value = '';
+            }
+        });
+
+        // এন্টার কী প্রেস করলে লগিন করার অপশন
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loginBtn.click();
+            }
+        });
+
+        // লগআউট ফাংশন
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('isLoggedIn');
+            window.location.reload();
+        });
+
+        // থিম টগল ফাংশন
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+        });
+
+        // পেইজ নেভিগেশন
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const pageId = link.getAttribute('data-page');
+                
+                navLinks.forEach(navLink => navLink.classList.remove('active'));
+                link.classList.add('active');
+                
+                pageContents.forEach(content => content.style.display = 'none');
+                document.getElementById(`${pageId}-page`).style.display = 'block';
+            });
+        });
+
+        // টগল সুইচ কন্ট্রোল
+        toggleSwitches.forEach(toggle => {
+            toggle.addEventListener('change', (e) => {
+                const device = toggle.getAttribute('data-device');
+                const relay = toggle.getAttribute('data-relay');
+                const newStatus = toggle.checked ? 'on' : 'off';
+                
+                // রিলে তথ্য স্টোর করুন
+                currentRelay = {
+                    device: device,
+                    relay: relay,
+                    newStatus: newStatus,
+                    toggleElement: toggle
+                };
+                
+                // মডাল শো করুন
+                showRelayPasswordModal(device, relay, newStatus);
+            });
+        });
+
+        // রিলে পাসওয়ার্ড মডাল শো করুন
+        function showRelayPasswordModal(device, relay, newStatus) {
+            modalTitle.textContent = `${device} - ${relay}`;
+            modalMessage.textContent = `রিলে ${relay.slice(-1)} ${newStatus === 'on' ? 'চালু' : 'বন্ধ'} করতে পাসওয়ার্ড দিন`;
+            relayPasswordInput.value = '';
+            relayErrorMessage.style.display = 'none';
+            relayPasswordModal.style.display = 'flex';
+        }
+
+        // মডাল ক্লোজ করুন
+        function closeModal() {
+            relayPasswordModal.style.display = 'none';
+            // টগল সুইচ পূর্বের অবস্থায় ফিরিয়ে দিন
+            if (currentRelay.toggleElement) {
+                currentRelay.toggleElement.checked = !currentRelay.toggleElement.checked;
+            }
+        }
+
+        // মডাল ক্লোজ বাটন ইভেন্ট
+        closeModalBtn.addEventListener('click', closeModal);
+        cancelRelayBtn.addEventListener('click', closeModal);
+
+        // মডাল বাইরে ক্লিক করলে ক্লোজ করুন
+        relayPasswordModal.addEventListener('click', (e) => {
+            if (e.target === relayPasswordModal) {
+                closeModal();
+            }
+        });
+
+        // রিলে কন্ট্রোল নিশ্চিত করুন
+        confirmRelayBtn.addEventListener('click', () => {
+            const enteredPassword = relayPasswordInput.value;
+            
+            if (enteredPassword === relayControlPassword) {
+                relayErrorMessage.style.display = 'none';
+                updateDeviceRelay(currentRelay.device, currentRelay.relay, currentRelay.newStatus);
+                relayPasswordModal.style.display = 'none';
+            } else {
+                relayErrorMessage.style.display = 'block';
+                relayPasswordInput.value = '';
+            }
+        });
+
+        // এন্টার প্রেস করলে কনফার্ম করুন
+        relayPasswordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                confirmRelayBtn.click();
+            }
+        });
+
+        // Firebase থেকে ডিভাইস স্ট্যাটাস আপডেট
+        function updateDeviceRelay(device, relay, value) {
+            database.ref(`devices/${device}/${relay}`).set(value)
+                .then(() => {
+                    console.log(`${device} ${relay} updated to ${value}`);
+                    updateLampStatus(device, relay, value);
+                    
+                    // লগ এন্ট্রি যোগ করুন
+                    const logRef = database.ref('logs').push();
+                    logRef.set({
+                        timestamp: new Date().toISOString(),
+                        device: device,
+                        event: `রিলে ${relay.slice(-1)} ${value === 'on' ? 'চালু' : 'বন্ধ'} করা হয়েছে`,
+                        status: value,
+                        triggered_by: 'admin'
+                    });
+                })
+                .catch(error => {
+                    console.error('Error updating device:', error);
+                    // এরর হলে টগল পূর্বাবস্থায় ফেরত দিন
+                    if (currentRelay.toggleElement) {
+                        currentRelay.toggleElement.checked = !currentRelay.toggleElement.checked;
+                    }
+                });
+        }
+
+        // ল্যাম্প স্ট্যাটাস আপডেট
+        function updateLampStatus(device, relay, status) {
+            const lamp = document.getElementById(`${device}-${relay}-lamp`);
+            if (lamp) {
+                if (status === 'on') {
+                    lamp.classList.remove('lamp-off');
+                    lamp.classList.add('lamp-on');
+                } else {
+                    lamp.classList.remove('lamp-on');
+                    lamp.classList.add('lamp-off');
+                }
+            }
+        }
+
+        // Firebase থেকে ডিভাইস স্ট্যাটাস পড়া
+        function listenForDeviceUpdates() {
+            const devices = [];
+            for (let i = 1; i <= 16; i++) {
+                devices.push(`device${i}`);
+            }
+            
+            const relays = ['relay1', 'relay2', 'relay3', 'relay4'];
+            
+            devices.forEach(device => {
+                relays.forEach(relay => {
+                    database.ref(`devices/${device}/${relay}`).on('value', (snapshot) => {
+                        const value = snapshot.val();
+                        const toggle = document.getElementById(`${device}-${relay}`);
+                        
+                        if (toggle) {
+                            toggle.checked = value === 'on';
+                        }
+                        
+                        updateLampStatus(device, relay, value);
+                    });
+                });
+                
+                // ডিভাইস কানেকশন স্ট্যাটাস
+                database.ref(`devices/${device}/status`).on('value', (snapshot) => {
+                    const status = snapshot.val();
+                    const statusElement = document.querySelector(`.card-title:contains("${device}") + .card-status`);
+                    
+                    if (statusElement) {
+                        statusElement.textContent = status === 'active' ? 'এক্টিভ' : 'ইনএক্টিভ';
+                        statusElement.className = `card-status status-${status === 'active' ? 'active' : 'inactive'}`;
+                    }
+                });
+            });
+        }
+
+        // অ্যাপ ইনিশিয়ালাইজেশন
+        function initializeApp() {
+            // থিম চেক করুন
+            if (localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-mode');
+            }
+            
+            // Firebase লিসেনার সেট আপ করুন
+            listenForDeviceUpdates();
+            
+            // ডিভাইস সিমুলেশন (ডেমো উদ্দেশ্যে)
+            simulateDeviceData();
+        }
+
+        // ডিভাইস ডেটা সিমুলেশন (ডেমো)
+        function simulateDeviceData() {
+            setInterval(() => {
+                const devices = [];
+                for (let i = 1; i <= 16; i++) {
+                    devices.push(`device${i}`);
+                }
+                
+                const randomDevice = devices[Math.floor(Math.random() * devices.length)];
+                const randomRelay = `relay${Math.floor(Math.random() * 4) + 1}`;
+                const randomAction = Math.random() > 0.5 ? 'on' : 'off';
+                
+                // 10% সম্ভাবনা যে ডিভাইস কানেকশন স্ট্যাটাস পরিবর্তন হবে
+                if (Math.random() > 0.9) {
+                    const newStatus = Math.random() > 0.5 ? 'active' : 'inactive';
+                    database.ref(`devices/${randomDevice}/status`).set(newStatus);
+                }
+            }, 5000);
+        }
+
+        // পেইজ লোড হলে চেক করুন ব্যবহারকারী লগিন আছে কিনা
+        window.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('isLoggedIn')) {
+                loginPage.style.display = 'none';
+                app.style.display = 'block';
+                initializeApp();
+            }
+        });
+    </script>
+</body>
+</html>
